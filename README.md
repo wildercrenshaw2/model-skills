@@ -1,30 +1,55 @@
 # AI model skills
 
-This repository contains four small Agent Skills-style directories for concrete model work: gpt-image-2 image generation, Seedance 2.5 video jobs, OpenAI-compatible Responses calls, and model discovery. Each SKILL.md has YAML frontmatter, a trigger description, validation gates, and an explicit failure boundary. They are independent instructions, not official vendor packages. Last checked: 2026-10-07.
+Four narrowly triggered Agent Skills procedures for concrete model work: GPT Image 2 image generation, Seedance 2.5 video, MiniMax H3 video, and OpenAI-compatible GPT-6 Sol Responses text. Each SKILL.md has YAML frontmatter, model-specific validation, a runnable request example, and an explicit failure boundary. They are community-maintained procedures, not official vendor packages.
 
-## Install
-
-Copy the relevant directory under the skills directory used by your agent host. Claude Code, Codex, and Cursor expose different discovery locations and can change their settings schema; inspect the current host documentation before installing. Do not copy every skill into a production agent merely to increase trigger count. A narrow trigger gives the host a better chance of selecting the right procedure.
+[Open the live model directory](https://argolink.io/gh-model-skills) before using a procedure. Last checked: 2026-10-07.
 
 ## Skill index
 
-| Directory | Trigger | Required fact check |
-|---|---|---|
-| image-generation | A user needs a gpt-image-2 image request | size, quality, references, output encoding |
-| video-generation | A user needs a Seedance 2.5 async job | duration, ratio, references, billing |
-| text-responses | A user needs a tool-enabled text request | model ID, endpoint, reasoning/tool support |
-| model-discovery | A user asks what models are available | current catalog and model-page URLs |
+| Directory | Trigger | Model-specific checks |
+| --- | --- | --- |
+| skills/image-generation | concrete GPT Image 2 image or edit | pixel size, quality, n, 1–16 edit references, output format |
+| skills/video-generation | Seedance 2.5 video | 4–30 seconds, adaptive frame/edit ratio, 30/10/10/50 references |
+| skills/minimax-h3-video | MiniMax H3 video | 768p versus 2k, 7,000-character prompt, audio requires visual reference |
+| skills/text-responses | tool-enabled text request | gpt-6-sol Responses endpoint, effort, context and usage |
 
-The skills intentionally do not claim prices in frontmatter. Put current values in a separate dated note after reading the catalog. The live ArgoLink pages are useful endpoints for the examples: [model index](https://argolink.io/gh-model-skills). The service is not the owner of every model mentioned.
+The index is intentionally not a generic model catalog. The examples use https://argolink.io/v1 as the API base, but the provider identity and model IDs remain explicit.
 
-## Common lifecycle
+## Installation
 
-For a paid request, validate the model ID, request shape, key environment variable, and destination path before sending. Add a User-Agent to every urllib request. For video, POST /v1/videos/generations once, save request_id, poll /v1/videos/{id} for pending, done, failed, or expired, and download only after done. For images and text, preserve the response and usage fields. A local timeout never proves that a server job failed.
+An Agent Skills package keeps a directory and its SKILL.md together. Inspect the current host documentation before copying:
+
+- Claude Code commonly discovers project skills in .claude/skills/<name>/SKILL.md and user skills in ~/.claude/skills/<name>/SKILL.md.
+- Codex uses the configured CODEX_HOME/skills directory or a supported project skills directory.
+- Cursor's Agent Skills discovery and global/project settings can change between releases.
+
+Install only the directories the host should be allowed to select. Secrets go in the host environment, never in frontmatter, sample prompts or source control.
+
+## Shared request discipline
+
+Before an external side effect, read the current model page, confirm the exact model ID, validate fields, show the body when an approval step exists, and choose an output path. Every urllib or HTTP request in these examples uses a descriptive User-Agent. An ambiguous POST is not evidence of failure; preserve the request record and investigate before submitting again.
+
+Video lifecycle is POST /v1/videos/generations, persist request_id, GET /v1/videos/{request_id} until pending becomes done/failed/expired, then GET /v1/videos/{request_id}/content. Image and text requests preserve their response and usage fields. Unknown statuses are errors.
+
+## Model facts and costs
+
+The values were checked on 2026-10-07:
+
+- GPT Image 2: 1K and 2K are 0.015 USD per returned image; 4K is 0.02. The requested size is actual pixels and the returned longest edge determines the billed tier.
+- Seedance 2.5: 4–30 seconds; 480p/720p/1080p; 0.0874/0.196/0.483 USD per output second. Frame and edit modes use adaptive ratio; reference video seconds add to billing.
+- MiniMax H3: 4–15 seconds; 768p or 2k; 0.039/0.064 USD per second. Reference audio must accompany an image or video.
+- GPT-6 Sol: 0.60 USD per million input tokens and 3.00 USD per million output tokens; use Responses for reasoning and tools.
+
+These are dated service-catalog facts, not universal defaults. If a field is omitted by a live page, the skill says to stop and verify rather than fill it from another model.
 
 ## Testing
 
-python3 -m unittest discover -s tests checks that every skill has frontmatter and a description. It makes no network request. The skills are intentionally short enough to be reviewed in an agent transcript; they are not a replacement for a model page, API reference, or host-specific security policy.
+~~~sh
+python -m unittest discover -s tests -v
+~~~
+
+The test checks all four frontmatters and model-specific content. The skills themselves do not contact a provider and do not require a key.
 
 ## FAQ
 
-**Are these official skills?** No. They are a community-maintained set of procedures. **Why four files instead of one generic skill?** Narrow triggers reduce accidental use of a video workflow for an image task. **Where do prices belong?** In dated evidence notes, not stale instructions. **Can a host run all four?** Yes if its discovery rules allow it, but install only the directories you need. **What if a model field is missing?** Stop, mark it unknown, and check the current primary page.
+**Are these official skills?** No. They are reviewable procedures. **Why separate them?** A narrow trigger prevents an image request from selecting a video workflow. **Can I install all four?** Yes if the host's discovery rules and review policy allow it. **What if a field changes?** Update only after reading the current primary model page and record a new check date. **Can I use a private media URL?** Only through an authenticated, documented upload or fetch flow; do not publish private URLs.
